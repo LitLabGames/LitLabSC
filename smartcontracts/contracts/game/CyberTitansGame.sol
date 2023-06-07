@@ -34,10 +34,10 @@ contract CyberTitansGame is LitlabContext, Ownable {
     address public manager;                         // Account with elevated permissions to call functions
     address public litlabToken;                     // LitlabGames token address
 
-    uint16[] public winnersPercentages = [475, 285, 190];      // Each game has 3 winners. They get 47.5%, 28.5% and 19% of the total pool each
-    uint16 public rake = 25;                        // Burn 2.5% each game
-    uint16 public fee = 25;                         // Fee 2.5%
-    uint16 public waitMinutes = 15;                 // Minimum delay between create and finalize game
+    uint16[] public winnersPercentages = [59375, 35625];      // Each game has 2 winners. They get 59.375% and 35.625% of total amount played
+    uint16 public rake = 2500;                        // Burn 2.5% each game
+    uint16 public fee = 2500;                         // Fee 2.5%
+    uint16 public waitMinutes = 0;                 // Minimum delay between create and finalize game
     bool private pause;                             // To pause the smartcontract
 
     event ManagerChanged(address _manager);
@@ -120,7 +120,7 @@ contract CyberTitansGame is LitlabContext, Ownable {
         rake = _rake;
 
         checkSum = checkSum + fee + rake;
-        require(checkSum == 1000, "BadCheckSum");
+        require(checkSum == 100000, "BadCheckSum");
 
         emit WinnersChanged(_winners, _fee, _rake);
     }
@@ -207,17 +207,17 @@ contract CyberTitansGame is LitlabContext, Ownable {
 
         uint256 winnersLen = _winners.length;
         for (uint256 i=0; i<winnersLen; ) {
-            IERC20(token).safeTransfer(_winners[i], totalBet * winnersPercentages[i] / 1000);
+            IERC20(token).safeTransfer(_winners[i], totalBet * winnersPercentages[i] / 100000);
             unchecked {
                 ++i;
             }
         }
 
         if (token == litlabToken) { 
-            ILitlabGamesToken(token).burn(totalBet * rake / 1000); // Only burn if we are using litlab token
-            IERC20(token).safeTransfer(wallet, totalBet * fee / 1000);
+            ILitlabGamesToken(token).burn(totalBet * rake / 100000); // Only burn if we are using litlab token
+            IERC20(token).safeTransfer(wallet, totalBet * fee / 100000);
         } else {    // Otherwise, take the rake as fee too
-            IERC20(token).safeTransfer(wallet, ((totalBet * rake) + (totalBet * fee)) / 1000);
+            IERC20(token).safeTransfer(wallet, ((totalBet * rake) + (totalBet * fee)) / 100000);
         }
 
         emit GameFinalized(_gameId, _winners);

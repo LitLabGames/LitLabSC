@@ -80,7 +80,7 @@ module.exports = {
       network_id: 97,
       timeoutBlocks: 600,
       skipDryRun: true,
-      gasPrice: 20000000000
+      gasPrice: 100000000000
     },
     goerli: {
       provider: () => new HDWalletProvider(MNEMONIC, RPC_URL),

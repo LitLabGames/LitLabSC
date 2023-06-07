@@ -49,8 +49,10 @@ contract CyberTitansTournament is LitlabContext, Ownable {
     event FeesUpdated(uint16 _fee, uint16 _rake);
     event PauseChanged(bool _paused);
     event TournamentCreated(uint256 _tournamentId);
+    event TournamentCancelled(uint256 _tournamentId);
     event TournamentFinalized(uint256 _tournamentId);
     event TournamentJoined(uint256 _id, address indexed _player);
+    event TournamentRetired(uint256 _id, address indexed _player);
     event TournamentStarted(uint256 _id, uint24 _litPlayers, uint24 _cttPlayers);
     event EmergencyWithdrawn(uint256 _balance, address indexed _token);
 
@@ -120,6 +122,13 @@ contract CyberTitansTournament is LitlabContext, Ownable {
         emit PauseChanged(pause);
     }
 
+    function changeArrays(uint32[][8] calldata _prizes, uint32[][8] calldata _players, uint32[][12] calldata _tops, uint8[8] calldata _winners) external onlyOwner {
+        for (uint256 i=0; i<_prizes.length; i++) prizes[i] = _prizes[i];
+        for (uint256 i=0; i<_players.length; i++) players[i] = _players[i];
+        for (uint256 i=0; i<_tops.length; i++) tops[i] = _tops[i];
+        for (uint256 i=0; i<_winners.length; i++) winners[i] = _winners[i];
+    }
+
     // To create the tournament only need. Token address, start date, bet for each player and minimum tournament prize
     // Returns the tournamentId
     function createTournament(
@@ -142,6 +151,18 @@ contract CyberTitansTournament is LitlabContext, Ownable {
         emit TournamentCreated(tournamentId);
     }
 
+    // The manager can cancel a tournament if there's any error in the creation data
+    function cancelTournament(uint256 _tournamentId) external onlyManager notPaused {
+        TournamentStruct storage tournament = tournaments[_tournamentId];
+        require(tournament.token != address(0), "NoTournament");
+        require(tournament.endDate == 0, "TournamentEnded");
+        require(tournament.numOfTokenPlayers == 0, "PlayersIn");
+
+        delete tournaments[_tournamentId];
+
+        emit TournamentCancelled(_tournamentId);
+    }
+
     // A player joins the tournament only using the id
     function joinTournament(uint256 _id) external notPaused {
         TournamentStruct storage tournament = tournaments[_id];
@@ -153,6 +174,31 @@ contract CyberTitansTournament is LitlabContext, Ownable {
         IERC20(tournament.token).safeTransferFrom(_msgSender(), address(this), tournament.playerBet);
 
         emit TournamentJoined(_id, _msgSender());
+    }
+    
+    // A player joins the tournament only using the id
+    function joinTournament(uint256 _id, address _player) external onlyManager notPaused {
+        TournamentStruct storage tournament = tournaments[_id];
+        if (tournament.startDate > 0) require(block.timestamp >= tournament.startDate, "NotStarted");
+        require(tournament.token != address(0), "NoTournament");
+        require(tournament.endDate == 0, "TournamentEnded");
+
+        tournament.numOfTokenPlayers++;
+        IERC20(tournament.token).safeTransferFrom(_player, address(this), tournament.playerBet);
+
+        emit TournamentJoined(_id, _player);
+    }
+
+    function retireFromTournament(uint256 _id, address _player) external onlyManager notPaused {
+        TournamentStruct storage tournament = tournaments[_id];
+        require(block.timestamp < tournament.startDate, "StartedYet");
+        require(tournament.token != address(0), "NoTournament");
+        require(tournament.endDate == 0, "TournamentEnded");
+
+        tournament.numOfTokenPlayers--;
+        IERC20(tournament.token).safeTransfer(_player, tournament.playerBet);
+
+        emit TournamentRetired(_id, _player);
     }
 
     // Get tournament data
